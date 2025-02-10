@@ -1,5 +1,5 @@
 aiohttp==3.9.3
-discord.py==2.5.0a5122+gaf759857
+discord.py==2.4.0
 Flask==2.0.3
 pytz==2024.2
 Requests==2.32.3
