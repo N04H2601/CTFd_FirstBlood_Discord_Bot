@@ -107,7 +107,14 @@ Before you begin, ensure you have met the following requirements:
 
 ## Usage
 
-1. **Run the Bot**
+1. **Run the Bot With Docker**
+
+   ```bash
+   docker compose up -d --build
+   docker compose logs -f firstblood-bot
+   ```
+
+2. **Run the Bot Without Docker**
 
    ```bash
    python3 main.py
@@ -119,7 +126,7 @@ Before you begin, ensure you have met the following requirements:
    Connecte a Discord en tant que YourBotName#1234
    ```
 
-2. **Bot Behavior**
+3. **Bot Behavior**
 
    - The bot checks CTFd every 5 seconds by default.
    - Discord announcements are queued and sent one by one with a 5 second delay by default.
