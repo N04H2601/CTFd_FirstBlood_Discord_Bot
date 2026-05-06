@@ -855,11 +855,7 @@ class FirstBloodBot(commands.Bot):
             self.config.display_timezone,
         )
         embed = discord.Embed(
-            title="🩸 First Blood! 🩸",
-            description=(
-                "## Nouveau first blood\n"
-                f"**{announcement.solve.solver_name}** vient de prendre le first blood."
-            ),
+            title="🩸 FIRST BLOOD 🩸",
             color=0xFF0000,
             timestamp=announcement.solve.solved_at_utc,
         )
@@ -870,16 +866,18 @@ class FirstBloodBot(commands.Bot):
         )
         embed.add_field(
             name="👥 Equipe",
-            value=announcement.solve.solver_name,
+            value=f"**{announcement.solve.solver_name}**",
             inline=True,
         )
         embed.add_field(
             name="⏱️ Resolu",
-            value=solved_at,
+            value=f"`{solved_at}`",
             inline=True,
         )
-        embed.set_author(name="dvCTF 2026")
-        embed.set_footer(text=f"First blood tracker | Challenge ID: {announcement.challenge_id}")
+        embed.set_author(name="DVCTF 2026")
+        embed.set_footer(
+            text=f"First blood tracker | Challenge ID: {announcement.challenge_id}"
+        )
         if self.config.message_thumbnail:
             embed.set_thumbnail(url=self.config.message_thumbnail)
         return embed
