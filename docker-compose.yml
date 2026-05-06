@@ -7,5 +7,7 @@ services:
       - .env
     environment:
       FIRST_BLOOD_DB_PATH: /app/data/first_bloods.sqlite3
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./data:/app/data

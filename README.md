@@ -88,6 +88,7 @@ Before you begin, ensure you have met the following requirements:
 
    - **CTFD_API_KEY:** Your CTFd API key with necessary permissions.
    - **CTFD_API_URL:** Your CTFd base URL. The bot also accepts `https://ctf.example.com/api/v1` and `https://ctf.example.com/api/v1/challenges`.
+     - If the public CTFd URL is protected by Cloudflare or another anti-bot layer, use an internal URL reachable from Docker, such as `http://host.docker.internal:8000`.
    - **DISCORD_CHANNEL_ID:** The ID of the Discord channel where announcements will be sent.
      - To get the channel ID, enable Developer Mode in Discord (User Settings > Advanced > Developer Mode), right-click the channel, and select **Copy ID**.
    - **DISCORD_BOT_TOKEN:** The token you saved from the Discord Developer Portal.
