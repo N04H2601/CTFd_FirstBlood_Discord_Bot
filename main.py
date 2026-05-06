@@ -2,6 +2,7 @@
 import asyncio
 import contextlib
 import csv
+import io
 import logging
 import os
 import sqlite3
@@ -9,6 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import aiohttp
@@ -644,6 +646,7 @@ class FirstBloodBot(commands.Bot):
         self.announcement_queue: asyncio.Queue[Announcement] = asyncio.Queue()
         self.queued_announcements: set[tuple[int, str]] = set()
         self.announcer_task: asyncio.Task[None] | None = None
+        self.thumbnail_file_cache: tuple[str, bytes] | None = None
 
     async def setup_hook(self) -> None:
         timeout = aiohttp.ClientTimeout(total=self.config.request_timeout_seconds)
@@ -779,8 +782,11 @@ class FirstBloodBot(commands.Bot):
                 attempted_send = True
                 self.store.record_send_attempt(announcement)
                 channel = await self.resolve_announcement_channel()
-                embed = self.build_announcement_embed(announcement)
-                message = await channel.send(embed=embed)
+                embed, file = await self.build_announcement_payload(announcement)
+                if file:
+                    message = await channel.send(embed=embed, file=file)
+                else:
+                    message = await channel.send(embed=embed)
                 self.store.mark_announced(announcement, message.id)
                 LOGGER.info(
                     "First blood annonce: challenge=%s solver=%s message_id=%s",
@@ -849,19 +855,81 @@ class FirstBloodBot(commands.Bot):
             self.config.display_timezone,
         )
         embed = discord.Embed(
-            title="First Blood!",
+            title="🩸 First Blood! 🩸",
             description=(
-                f"**Challenge :** `{announcement.challenge_name}`\n"
-                f"**Equipe :** {announcement.solve.solver_name}\n"
-                f"**Resolu :** {solved_at}"
+                "## Nouveau first blood\n"
+                f"**{announcement.solve.solver_name}** vient de prendre le first blood."
             ),
             color=0xFF0000,
             timestamp=announcement.solve.solved_at_utc,
         )
-        embed.set_footer(text=f"Challenge ID: {announcement.challenge_id}")
+        embed.add_field(
+            name="🎯 Challenge",
+            value=f"`{announcement.challenge_name}`",
+            inline=False,
+        )
+        embed.add_field(
+            name="👥 Equipe",
+            value=announcement.solve.solver_name,
+            inline=True,
+        )
+        embed.add_field(
+            name="⏱️ Resolu",
+            value=solved_at,
+            inline=True,
+        )
+        embed.set_author(name="dvCTF 2026")
+        embed.set_footer(text=f"First blood tracker | Challenge ID: {announcement.challenge_id}")
         if self.config.message_thumbnail:
             embed.set_thumbnail(url=self.config.message_thumbnail)
         return embed
+
+    async def build_announcement_payload(
+        self,
+        announcement: Announcement,
+    ) -> tuple[discord.Embed, discord.File | None]:
+        embed = self.build_announcement_embed(announcement)
+        file = await self.thumbnail_attachment()
+        if file:
+            embed.set_thumbnail(url=f"attachment://{file.filename}")
+        return embed, file
+
+    async def thumbnail_attachment(self) -> discord.File | None:
+        if not self.config.message_thumbnail:
+            return None
+
+        try:
+            filename, content = await self.fetch_thumbnail_file()
+        except Exception as exc:
+            LOGGER.warning("Thumbnail non joignable, fallback URL distante: %s", exc)
+            return None
+
+        return discord.File(io.BytesIO(content), filename=filename)
+
+    async def fetch_thumbnail_file(self) -> tuple[str, bytes]:
+        if self.thumbnail_file_cache:
+            return self.thumbnail_file_cache
+        if self.session is None:
+            raise RuntimeError("Session HTTP non initialisee")
+
+        url = self.config.message_thumbnail
+        assert url is not None
+        async with self.session.get(url) as response:
+            if response.status != 200:
+                raise RuntimeError(f"HTTP {response.status}")
+            content_type = response.headers.get("content-type", "")
+            if not content_type.startswith("image/"):
+                raise RuntimeError(f"Content-Type inattendu: {content_type}")
+            content = await response.read()
+
+        if len(content) > 8 * 1024 * 1024:
+            raise RuntimeError("Image trop volumineuse pour Discord")
+
+        suffix = Path(urlparse(url).path).suffix.lower()
+        if suffix not in {".png", ".jpg", ".jpeg", ".gif", ".webp"}:
+            suffix = ".png"
+        self.thumbnail_file_cache = (f"firstblood-thumbnail{suffix}", content)
+        return self.thumbnail_file_cache
 
 
 def configure_logging() -> None:
