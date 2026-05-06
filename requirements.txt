@@ -1,5 +1,4 @@
 aiohttp==3.9.3
 discord.py==2.4.0
-Flask==2.0.3
-pytz==2024.2
-Requests==2.32.3
+python-dotenv==1.0.1
+tzdata>=2024.2

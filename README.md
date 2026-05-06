@@ -15,9 +15,11 @@ A Discord bot that monitors your CTFd platform for first bloods on challenges an
 
 ## Features
 
-- **Real-time Monitoring:** Continuously checks your CTFd API for new first bloods.
+- **Real-time Monitoring:** Continuously checks your CTFd API for first blood changes.
 - **Automated Announcements:** Sends beautifully formatted embeds to your Discord channel.
-- **Persistent Storage:** Keeps track of announced first bloods to avoid duplicates using a CSV file.
+- **Persistent Storage:** Keeps track of announced first bloods in SQLite to avoid duplicates and retry failed announcements.
+- **Solve Reconciliation:** Re-checks already announced challenges so a replacement first blood is announced if solves are removed and a new earliest solve appears.
+- **CTFd Resilience:** Handles CTFd being down, paused, not started, or temporarily unreachable without crashing.
 - **Customizable:** Easily configure API endpoints, Discord channel, and other settings via a `.env` file.
 - **Error Handling:** Robust error logging to help you troubleshoot issues effectively.
 
@@ -25,7 +27,7 @@ A Discord bot that monitors your CTFd platform for first bloods on challenges an
 
 Before you begin, ensure you have met the following requirements:
 
-- **Python 3.8+** installed on your machine. You can download it [here](https://www.python.org/downloads/).
+- **Python 3.10+** installed on your machine. You can download it [here](https://www.python.org/downloads/).
 - **Discord Account** and a **Discord Server** where you have permission to add bots.
 - **CTFd Platform** with API access.
 
@@ -70,51 +72,80 @@ Before you begin, ensure you have met the following requirements:
 
 3. **Set Up the `.env` File**
 
-   Create a `.env` file in the root directory of the project with the following content:
+   Create a `.env` file in the root directory of the project. You can start from `.env.example`:
 
    ```env
    CTFD_API_KEY="ctfd_abcd123..."
-   CTFD_API_URL="https://ctf.example.com/api/v1/challenges"
+   CTFD_API_URL="https://ctf.example.com"
    DISCORD_CHANNEL_ID=123456789012345678
    DISCORD_BOT_TOKEN="YOUR_DISCORD_BOT_TOKEN"
    MESSAGE_THUMBNAIL="https://ctf.example.com/files/123abc/image.png"
+   CHECK_INTERVAL_SECONDS=5
+   ANNOUNCE_DELAY_SECONDS=5
+   FIRST_BLOOD_DB_PATH="first_bloods.sqlite3"
+   DISPLAY_TIMEZONE="Europe/Paris"
    ```
 
    - **CTFD_API_KEY:** Your CTFd API key with necessary permissions.
-   - **CTFD_API_URL:** The API endpoint for fetching challenges.
+   - **CTFD_API_URL:** Your CTFd base URL. The bot also accepts `https://ctf.example.com/api/v1` and `https://ctf.example.com/api/v1/challenges`.
    - **DISCORD_CHANNEL_ID:** The ID of the Discord channel where announcements will be sent.
      - To get the channel ID, enable Developer Mode in Discord (User Settings > Advanced > Developer Mode), right-click the channel, and select **Copy ID**.
    - **DISCORD_BOT_TOKEN:** The token you saved from the Discord Developer Portal.
    - **MESSAGE_THUMBNAIL:** URL of the image to be used as the thumbnail in the embed messages.
+   - **CHECK_INTERVAL_SECONDS:** How often the bot polls CTFd. Defaults to `5`.
+   - **ANNOUNCE_DELAY_SECONDS:** Delay between Discord first blood messages. Defaults to `5`.
+   - **FIRST_BLOOD_DB_PATH:** SQLite state database path. Defaults to `first_bloods.sqlite3`.
+   - **DISPLAY_TIMEZONE:** Timezone used in Discord embeds. Defaults to `Europe/Paris`.
+
+   Optional variables:
+
+   ```env
+   SOLVE_FETCH_CONCURRENCY=8
+   REQUEST_TIMEOUT_SECONDS=15
+   CTFD_SITE_PASSWORD="optional_site_password_cookie"
+   ```
 
 ## Usage
 
 1. **Run the Bot**
 
    ```bash
-   python main.py
+   python3 main.py
    ```
 
    Upon successful launch, you should see a message like:
 
    ```
-   Logged in as YourBotName#1234
+   Connecte a Discord en tant que YourBotName#1234
    ```
 
 2. **Bot Behavior**
 
-   - The bot will check for new first bloods every 5 seconds (configurable via `CHECK_INTERVAL`).
+   - The bot checks CTFd every 5 seconds by default.
+   - Discord announcements are queued and sent one by one with a 5 second delay by default.
+   - The SQLite database stores the current first solve fingerprint per challenge. This prevents duplicate announcements and lets the bot detect a new first blood if the original solve is deleted.
+   - If `announced_first_bloods.csv` exists from an older version, it is migrated once into SQLite. Existing CSV entries are treated as already announced to avoid duplicate announcements.
+   - If CTFd is down, paused, not started, or returns a non-200 response, the bot logs the problem and retries on the next interval.
    - When a first blood is detected, it will send an embed message to the specified Discord channel with details about the challenge, team, and time solved.
 
 ## Customization
 
-- **Check Interval:** Modify the `CHECK_INTERVAL` variable in `main.py` to change how frequently the bot checks for new first bloods.
+- **Check Interval:** Set `CHECK_INTERVAL_SECONDS` in `.env` to change how frequently the bot checks for first bloods.
 
-  ```python
-  CHECK_INTERVAL = 5  # Seconds between each check for new first bloods
+  ```env
+  CHECK_INTERVAL_SECONDS=5
   ```
 
-- **Embed Message:** Customize the appearance and content of the embed messages by editing the `embed` object in the `check_first_blood` function.
+- **Embed Message:** Customize the appearance and content of the embed messages by editing `build_announcement_embed` in `main.py`.
+
+## Verification
+
+Run the local checks before deploying:
+
+```bash
+python3 -m py_compile main.py
+python3 -m unittest discover -v
+```
 
 ## Contributing
 
