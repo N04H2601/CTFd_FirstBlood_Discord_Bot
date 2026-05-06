@@ -871,10 +871,9 @@ class FirstBloodBot(commands.Bot):
         )
         embed.add_field(
             name="⏱️ Resolu",
-            value=f"`{solved_at}`",
+            value=solved_at,
             inline=True,
         )
-        embed.set_author(name="DVCTF 2026")
         embed.set_footer(
             text=f"First blood tracker | Challenge ID: {announcement.challenge_id}"
         )
