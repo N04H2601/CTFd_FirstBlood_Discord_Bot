@@ -1,0 +1,4 @@
+aiohttp==3.9.3
+discord.py==2.4.0
+python-dotenv==1.0.1
+tzdata>=2024.2
